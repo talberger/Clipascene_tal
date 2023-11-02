@@ -6,6 +6,8 @@ import os
 import pydiffvg
 import torch.nn as nn
 import sys 
+import matplotlib
+matplotlib.use('Agg') # tal code - no display to make it faster
 import matplotlib.pyplot as plt
 from shutil import copyfile
 import numpy as np
@@ -68,10 +70,10 @@ def gen_matrix(output_dir, im_name, layers, rows_inds):
         copy_files(sorted_layer_paths_o, col_, "object_matrix")
         print("finished copying")
     
-    params_path = f"{output_dir}/runs/object_l11_{im_name}/resize_params.npy"
+    params_path = f"{output_dir}/runs/object_l{layers[0]}_{im_name}/resize_params.npy"
     if os.path.exists(params_path):
         copyfile(params_path, f"{output_dir}/object_matrix/resize_params.npy")
-    mask_path = f"{output_dir}/runs/object_l11_{im_name}/mask.png"
+    mask_path = f"{output_dir}/runs/object_l{layers[0]}_{im_name}/mask.png"
     if os.path.exists(mask_path):
         copyfile(mask_path, f"{output_dir}/object_matrix/mask.png")
 
@@ -104,7 +106,7 @@ def plot_matrix_svg(svgs_path, rows, cols, resize_obj, output_dir, output_name):
             plt.imshow(im)
             plt.axis("off")
     plt.savefig(f"{output_dir}/{output_name}_matrix.png")
-    plt.show()
+    plt.show(block=False)
     
 
 def plot_matrix_raster(im_path, rows, cols, output_dir, output_name):
@@ -138,16 +140,19 @@ def combine_matrix(output_dir, rows, cols, output_size = 448):
             cur_svg_o = f"{output_dir}/object_matrix/row{row_}_col{col_}.svg"
             print(cur_svg_o)
             raster_o = scripts_utils.read_svg(cur_svg_o, resize_obj=1, params=params, multiply=1.8, device=device)
-            imageio.imsave(f"{output_dir}/object_matrix/row{row_}_col{col_}.png", raster_o)
+            raster_o_uint8 = (raster_o * 255).astype(np.uint8)
+            imageio.imsave(f"{output_dir}/object_matrix/row{row_}_col{col_}.png", raster_o_uint8)
 
             cur_svg_b = f"{output_dir}/background_matrix/row{row_}_col{col_}.svg"
             print(cur_svg_b)
             raster_b = scripts_utils.read_svg(cur_svg_b, resize_obj=0, params=params, multiply=1.8, device=device)
-            imageio.imsave(f"{output_dir}/background_matrix/row{row_}_col{col_}.png", raster_b)
+            raster_b_uint8 = (raster_b * 255).astype(np.uint8)
+            imageio.imsave(f"{output_dir}/background_matrix/row{row_}_col{col_}.png", raster_b_uint8)
 
             raster_b[mask == 1] = 1
             raster_b[raster_o != 1] = raster_o[raster_o != 1]
-            imageio.imsave(f"{output_dir}/combined_matrix/row{row_}_col{col_}.png", raster_b)
+            raster_b_uint8 = (raster_b * 255).astype(np.uint8)
+            imageio.imsave(f"{output_dir}/combined_matrix/row{row_}_col{col_}.png", raster_b_uint8)
 
 
 
@@ -156,10 +161,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--im_name", type=str, default="")
     parser.add_argument("--layers", type=str, default="2,8,11")
+    parser.add_argument("--rows", type=str, default="9")
+    parser.add_argument("--is_single", type=int, default=0)
     args = parser.parse_args()
     layers = args.layers.split(",")
     cols = range(len(layers))
-    rows = range(9)
+    rows = range(int(args.rows))
 
     output_dir = f"./results_sketches/{args.im_name}"
     if not os.path.exists(f"{output_dir}/object_matrix"):
@@ -176,23 +183,24 @@ if __name__ == "__main__":
                 torch.cuda.is_available() and torch.cuda.device_count() > 0) else "cpu")
     runs_dir = f"{output_dir}/runs"
     gen_matrix(output_dir, args.im_name, layers, cols)
-              
-
+    
     svg_path = f"{output_dir}/background_matrix"
     resize_obj=0
-    plot_matrix_svg(svg_path, range(9), cols, resize_obj, output_dir, "background_all")
-    plot_matrix_svg(svg_path, range(9)[1::2], cols, resize_obj, output_dir, "background_4x4")
+    plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "background_all")
+    if not args.is_single: 
+        plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "background_4x4")
 
 
     svg_path = f"{output_dir}/object_matrix"
     resize_obj=1
-    plot_matrix_svg(svg_path, range(9), cols, resize_obj, output_dir, "obj_all")
-    plot_matrix_svg(svg_path, range(9)[1::2], cols, resize_obj, output_dir, "obj_4x4")
+    plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "obj_all")
+    if not args.is_single:
+        plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "obj_4x4")
 
     combine_matrix(output_dir, rows, cols)
-
-    plot_matrix_raster(f"{output_dir}/combined_matrix", range(9)[1::2], cols, output_dir, "combined_4x4")
-    plot_matrix_raster(f"{output_dir}/combined_matrix", rows, cols, output_dir, "combined_all")
+    if not args.is_single:
+        plot_matrix_raster(f"{output_dir}/combined_matrix", range(int(args.rows))[1::2], cols, output_dir, "combined_4x4")
+        plot_matrix_raster(f"{output_dir}/combined_matrix", rows, cols, output_dir, "combined_all")
 
 
 

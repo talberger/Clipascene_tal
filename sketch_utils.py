@@ -1,6 +1,8 @@
 import os
 
 import imageio
+import matplotlib
+matplotlib.use('Agg') # tal code - no display to make it faster
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -53,6 +55,7 @@ def imwrite(img, filename, gamma=2.2, normalize=False, use_wandb=False, wandb_na
 
 
 def plot_batch(inputs, outputs, output_dir, step, use_wandb, title):
+    plt.ioff()
     plt.figure(figsize=(3,6))
     plt.subplot(2, 1, 1)
     grid = make_grid(inputs.clone().detach(), normalize=True, pad_value=2)

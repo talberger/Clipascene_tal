@@ -46,7 +46,7 @@ if args.object_or_background == "object":
 # ====== demo =======
 # ===================
 num_strokes = 64
-num_sketches = 2
+num_sketches = 1
 num_iter = args.num_iter
 # ===================
 
@@ -62,7 +62,6 @@ clip_conv_layer_weights = ','.join(clip_conv_layer_weights_str)
 file_ = f"{path_to_input_images}/{folder_}/{im_filename}"
 test_name = f"{args.object_or_background}_l{args.layer_opt}_{os.path.splitext(im_filename)[0]}"
 print(test_name)
-
 start_time = time.time()
 sp.run(["python", 
         "scripts/run_sketch.py", 
