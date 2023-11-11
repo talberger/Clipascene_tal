@@ -2,7 +2,7 @@ import os
 
 import imageio
 import matplotlib
-matplotlib.use('Agg') # tal code - no display to make it faster
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd

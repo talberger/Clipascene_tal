@@ -7,7 +7,7 @@ import pydiffvg
 import torch.nn as nn
 import sys 
 import matplotlib
-matplotlib.use('Agg') # tal code - no display to make it faster
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from shutil import copyfile
 import numpy as np
@@ -198,9 +198,10 @@ if __name__ == "__main__":
         plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "obj_4x4")
 
     combine_matrix(output_dir, rows, cols)
+    plot_matrix_raster(f"{output_dir}/combined_matrix", rows, cols, output_dir, "combined_all")
     if not args.is_single:
         plot_matrix_raster(f"{output_dir}/combined_matrix", range(int(args.rows))[1::2], cols, output_dir, "combined_4x4")
-        plot_matrix_raster(f"{output_dir}/combined_matrix", rows, cols, output_dir, "combined_all")
+        
 
 
 
