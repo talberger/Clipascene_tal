@@ -119,8 +119,17 @@ If you want to run our method for spesific fidelity or simplicity levels, you ca
     ```bash
     python scripts/run_ratio.py --im_name <im_name> --layer_opt <desired_layer> --object_or_background "object" --min_div <step_size> --resize 1
     ```
-    Where <step_size> is the parameter to sample the function f_k (as described in the paper). You can find the spesific parameters under   "scripts/run_all.py" 
+    Where <step_size> is the parameter to sample the function f_k (as described in the paper). You can find the spesific parameters under   "scripts/run_all.py"
 
+* ```run_single_sketch.py``` - generates a combined (background and object) single sketch at a given fidelity layer. <br>
+    ```bash
+    python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
+    ```
+    
+* ```run_4_sketches.py``` - generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
+    ```bash
+    python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
+    ```
 
 ## Tips for efficiency
 
