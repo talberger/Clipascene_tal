@@ -7,7 +7,7 @@ import multiprocessing as mp
 # ===================================================
 # ================= run background ==================
 # ===================================================
-# The script generates a 2x2 matrix of different levels of fidelity and simplicity.
+# The script generates a 2x2 matrix of different levels of fidelity and simplicity. 
 # You can specify different layers and divs using the --layers and
 # --divs parameters.
 # Example of running commands:
