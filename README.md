@@ -121,16 +121,6 @@ If you want to run our method for spesific fidelity or simplicity levels, you ca
     ```
     Where <step_size> is the parameter to sample the function f_k (as described in the paper). You can find the spesific parameters under   "scripts/run_all.py"
 
-* ```run_single_sketch.py``` - generates a combined (background and object) single sketch at a given fidelity layer. <br>
-    ```bash
-    python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
-    ```
-    
-* ```run_4_sketches.py``` - generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
-    ```bash
-    python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
-    ```
-
 ## Tips for efficiency
 
 * Note that the provided scripts assume only one GPU, so all processes run sequentially. <br>
@@ -141,3 +131,17 @@ If you have multiple GPUs, you can run Background and Foreground sketches in par
 * Additionally, you can use less steps in "scripts/generate_fidelity_levels.py" - currently num_iter is set to 1500, however, after ~500 steps you can already get quite a reasonable scale.
 
 * You can additinally generate less levels along the simplicity axis, by modifying the "num_ratios" parameter in "get_ratios_dict".
+
+* The full run that generates 3x9 matrix (3 levels of fidelity and 9 levels of simlicity) may take several hours. To achieve faster results while still making the full pipeline, there are two options for performing a mini run:
+    - ```run_single_sketch.py``` - generates a combined (background and object) single sketch at a given fidelity layer. <br>
+        This process takes about five minutes on a stardart GPU.
+     <br>
+        ```bash
+        python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
+        ```
+    -  ```run_4_sketches.py``` - generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
+        This process takes about 18 minutes on a stardart GPU.
+        ```bash
+        python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
+        ```
+
