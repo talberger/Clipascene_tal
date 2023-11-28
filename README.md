@@ -132,7 +132,7 @@ If you have multiple GPUs, you can run Background and Foreground sketches in par
 
 * You can additinally generate less levels along the simplicity axis, by modifying the "num_ratios" parameter in "get_ratios_dict".
 
-* The full run that generates 3x9 matrix (3 levels of fidelity and 9 levels of simlicity) may take several hours. To achieve faster results while still making the full pipeline, there are two options for performing a mini run:
+* The full run that generates 3x9 matrix (3 levels of fidelity and 9 levels of simplicity) may take several hours. To achieve faster results while still making the full pipeline, there are two options for performing a mini run:
     - ```run_single_sketch.py``` - generates a combined (background and object) single sketch at a given fidelity layer. <br>
         This process takes about five minutes on a standard GPU. <br> 
         ```bash
