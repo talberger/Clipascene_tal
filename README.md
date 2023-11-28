@@ -134,13 +134,12 @@ If you have multiple GPUs, you can run Background and Foreground sketches in par
 
 * The full run that generates 3x9 matrix (3 levels of fidelity and 9 levels of simlicity) may take several hours. To achieve faster results while still making the full pipeline, there are two options for performing a mini run:
     - ```run_single_sketch.py``` - generates a combined (background and object) single sketch at a given fidelity layer. <br>
-        This process takes about five minutes on a stardart GPU.
-     <br>
+        This process takes about five minutes on a standard GPU. <br> 
         ```bash
         python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
         ```
     - ```run_4_sketches.py``` - generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
-        This process takes about 18 minutes on a stardart GPU. <br>
+        This process takes about 18 minutes on a standard GPU. <br>
         ```bash
         python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
         ```
