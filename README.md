@@ -139,8 +139,8 @@ If you have multiple GPUs, you can run Background and Foreground sketches in par
         ```bash
         python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
         ```
-    -  ```run_4_sketches.py``` - generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
-        This process takes about 18 minutes on a stardart GPU.
+    - ```run_4_sketches.py``` - generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
+        This process takes about 18 minutes on a stardart GPU. <br>
         ```bash
         python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
         ```
