@@ -134,15 +134,15 @@ If you have multiple GPUs, you can run Background and Foreground sketches in par
 
 ## Efficient sketch generation
 
-Running the full pipeline, which produces a 3x9 matrix (encompassing 3 levels of fidelity and 9 levels of simplicity), can take several hours. For faster results, you have the option of conducting a mini run using two methods:<br>
-    * ```run_single_sketch.py``` - Generates a single sketch that combines both the background and the object at a specified fidelity level. <br>
-        This process takes 294 seconds on a GeForce RTX 2080. <br> 
-        ```bash
-        python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
-        ```
-    * ```run_4_sketches.py``` - Generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
-        This process takes 1089 seconds on GeForce RTX 2080. <br>
-        ```bash
-        python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
-        ```
+Running the full pipeline, which produces a 3x9 matrix (3 levels of fidelity and 9 levels of simplicity), can take several hours. For faster results, you have the option of conducting a mini run using two methods:<br>
+* ```run_single_sketch.py``` - Generates a single sketch that combines both the background and the object at a specified fidelity level. <br>
+    This process takes 294 seconds on a GeForce RTX 2080. <br> 
+    ```bash
+    python scripts/run_single_sketch.py --im_name "ballerina" --layer_opt 4
+    ```
+* ```run_4_sketches.py``` - Generates a 2x2 matrix of different levels of fidelity and simplicity. <br>
+    This process takes 1089 seconds on GeForce RTX 2080. <br>
+    ```bash
+    python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
+    ```
 
