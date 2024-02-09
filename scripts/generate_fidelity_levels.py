@@ -23,6 +23,7 @@ parser.add_argument("--layer_opt", type=int, default=4)
 parser.add_argument("--object_or_background", type=str, default="background")
 parser.add_argument("--resize_obj", type=int, default=0)
 parser.add_argument("--num_iter", type=int, default=1501)
+parser.add_argument("--num_sketches", type=int, default=2)
 args = parser.parse_args()
 
 
@@ -46,7 +47,7 @@ if args.object_or_background == "object":
 # ====== demo =======
 # ===================
 num_strokes = 64
-num_sketches = 1
+num_sketches = args.num_sketches
 num_iter = args.num_iter
 # ===================
 

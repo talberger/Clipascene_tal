@@ -26,7 +26,7 @@ parser.add_argument("--layer_opt", type=str, default="4,11")
 parser.add_argument("--divs", type=str, default="0.45,0.9")
 
 args = parser.parse_args()
-
+num_sketches = 1
 
 def run_generate_fidelity_levels(object_or_background, resize_obj,num_iter,layer_opt):
     exit_code = sp.run(["python", "scripts/generate_fidelity_levels.py",
@@ -34,7 +34,8 @@ def run_generate_fidelity_levels(object_or_background, resize_obj,num_iter,layer
                             "--layer_opt", str(layer_opt),
                             "--object_or_background", object_or_background,
                             "--num_iter", str(num_iter),
-                            "--resize_obj", resize_obj])
+                            "--resize_obj", resize_obj,
+                            "--num_sketches", str(num_sketches)])
     
 def run_ratio(simp_level, div, layer_opt, object_or_background, resize_obj):
     exit_code = sp.run(["python", "scripts/run_ratio.py",
@@ -43,7 +44,8 @@ def run_ratio(simp_level, div, layer_opt, object_or_background, resize_obj):
                             "--object_or_background", object_or_background,
                             "--resize_obj",str(resize_obj),
                             "--min_div", str(div),
-                            "--simp_level", str(simp_level)])
+                            "--simp_level", str(simp_level),
+                            "--num_sketches", str(num_sketches)])
 
 if __name__ == "__main__":
         mp.set_start_method("spawn")
@@ -52,6 +54,7 @@ if __name__ == "__main__":
         P2 = mp.Pool(ncpus)
         P3 = mp.Pool(ncpus)
         P4 = mp.Pool(ncpus)
+        
 
         layers = [int(l) for l in args.layer_opt.split(",")]
         divs = [float(d) for d in args.divs.split(",")]

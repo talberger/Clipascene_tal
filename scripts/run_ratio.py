@@ -24,15 +24,9 @@ parser.add_argument("--simp_level", type=int, default=0)
 parser.add_argument("--object_or_background", type=str, default="background")
 parser.add_argument("--min_div", type=float, default=0)
 parser.add_argument("--resize_obj", type=int, default=0)
+parser.add_argument("--num_sketches", type=int, default=2)
 
 args = parser.parse_args()
-
-## manual run for debug ##
-# args.im_name = "bull"
-# args.layer_opt = 4
-# args.object_or_backgournd = "background"
-# args.min_div =0.5
-
 
 # =============================
 # ====== default params =======
@@ -56,7 +50,7 @@ if args.object_or_background == "object":
 # =========== real ============
 # =============================
 num_iter = 401
-num_sketches = 1
+num_sketches = args.num_sketches
 # =============================
 
 
@@ -88,7 +82,7 @@ print(ratios)
 
 # train for each ratio
 for i, ratio in enumerate(ratios):
-    if args.simp_level != 0 and args.simp_level != i: # train for spesific simplicity level
+    if args.simp_level != 0 and args.simp_level != i: # in case we want to skip to a specific simplicity level
         continue 
     start = time.time()
     test_name_pref = f"l{args.layer_opt}_{os.path.splitext(os.path.basename(file_))[0]}_{args.min_div}"
@@ -97,7 +91,7 @@ for i, ratio in enumerate(ratios):
         print("**** test_name ****")
         print(test_name)
         if i == 0 or (args.simp_level != 0 and args.simp_level == i):
-            # in this case we use the semantic mlp (first row) ansd we don't want its optimizer
+            # in this case we use the semantic mlp (first row) and we don't want its optimizer
             mlp_width_weights_path = "none"
             load_points_opt_weights = 0
         else:

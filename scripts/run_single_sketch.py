@@ -25,7 +25,8 @@ def run(object_or_background, resize_obj,num_iter):
                             "--layer_opt", str(args.layer_opt),
                             "--object_or_background", object_or_background,
                             "--num_iter", str(num_iter),
-                            "--resize_obj", resize_obj])
+                            "--resize_obj", resize_obj,
+                            "--num_sketches", str(1)])
 
 
 if __name__ == "__main__":

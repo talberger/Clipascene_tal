@@ -4,4 +4,5 @@ U2Net_/saved_models/u2net.pth
 results_sketches/ballerina/runs/*
 notebooks/*
 lama/*
-results_sketches/
+results_sketches/*
+target_images/*
