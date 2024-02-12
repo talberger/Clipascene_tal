@@ -25,6 +25,7 @@ parser.add_argument("--object_or_background", type=str, default="background")
 parser.add_argument("--min_div", type=float, default=0)
 parser.add_argument("--resize_obj", type=int, default=0)
 parser.add_argument("--num_sketches", type=int, default=2)
+parser.add_argument("--fg_bg_separation", type=int, default=1)
 
 args = parser.parse_args()
 
@@ -36,9 +37,16 @@ output_pref = f"./results_sketches/{args.im_name}/runs" # path to output the res
 path_res_pref = f"./results_sketches/{args.im_name}/runs" # path to take semantic trained models from
 filename = f"{args.im_name}_mask.png" if args.object_or_background == "background" else f"{args.im_name}.png"
 folder_ = "background" if args.object_or_background == "background" else "scene"
+
+if not args.fg_bg_separation:
+    filename = f"{args.im_name}.png"
+    folder_ = "scene"
+    res_filename = f"l{args.layer_opt}_{os.path.splitext(filename)[0]}"
+else:
+    res_filename = f"{args.object_or_background}_l{args.layer_opt}_{os.path.splitext(filename)[0]}"
+
 file_ = f"{path_to_files}/{folder_}/{filename}"
 
-res_filename = f"{args.object_or_background}_l{args.layer_opt}_{os.path.splitext(filename)[0]}"
 
 num_strokes=64
 gradnorm = 1
@@ -85,7 +93,10 @@ for i, ratio in enumerate(ratios):
     if args.simp_level != 0 and args.simp_level != i: # in case we want to skip to a specific simplicity level
         continue 
     start = time.time()
-    test_name_pref = f"l{args.layer_opt}_{os.path.splitext(os.path.basename(file_))[0]}_{args.min_div}"
+    if args.fg_bg_separation:
+        test_name_pref = f"l{args.layer_opt}_{os.path.splitext(os.path.basename(file_))[0]}_{args.min_div}"
+    else:
+        test_name_pref = f"l{args.layer_opt}_{os.path.splitext(os.path.basename(file_))[0]}_scene_{args.min_div}"
     test_name = f"ratio{ratio}_{test_name_pref}"
     if not os.path.exists(f"{output_pref}/{test_name}/width_mlp.pt"):
         print("**** test_name ****")

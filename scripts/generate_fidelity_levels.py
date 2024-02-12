@@ -24,6 +24,9 @@ parser.add_argument("--object_or_background", type=str, default="background")
 parser.add_argument("--resize_obj", type=int, default=0)
 parser.add_argument("--num_iter", type=int, default=1501)
 parser.add_argument("--num_sketches", type=int, default=2)
+parser.add_argument("--fg_bg_separation", type=int, default=1)
+parser.add_argument("--num_strokes", type=int, default=64,
+                    help="number of strokes used to generate the sketch, this defines the level of abstraction.")
 args = parser.parse_args()
 
 
@@ -42,11 +45,10 @@ if args.object_or_background == "object":
     im_filename = f"{args.im_name}.png"
     folder_ = "scene"
 
-
 # ===================
 # ====== demo =======
 # ===================
-num_strokes = 64
+num_strokes = args.num_strokes
 num_sketches = args.num_sketches
 num_iter = args.num_iter
 # ===================
@@ -59,9 +61,14 @@ if args.object_or_background == "object":
 clip_conv_layer_weights_int[args.layer_opt] = 1
 clip_conv_layer_weights_str = [str(j) for j in clip_conv_layer_weights_int]
 clip_conv_layer_weights = ','.join(clip_conv_layer_weights_str)
-
+if not args.fg_bg_separation:
+    im_filename = f"{args.im_name}.png"
+    folder_ = "scene"
+    test_name = f"l{args.layer_opt}_{os.path.splitext(im_filename)[0]}"
+else:
+    test_name = f"{args.object_or_background}_l{args.layer_opt}_{os.path.splitext(im_filename)[0]}"
 file_ = f"{path_to_input_images}/{folder_}/{im_filename}"
-test_name = f"{args.object_or_background}_l{args.layer_opt}_{os.path.splitext(im_filename)[0]}"
+    
 print(test_name)
 start_time = time.time()
 sp.run(["python", 
@@ -76,6 +83,7 @@ sp.run(["python",
         "--gradnorm", str(gradnorm),
         "--resize_obj", str(args.resize_obj),
         "--eval_interval", str(50),
+        "--num_strokes", str(num_strokes),
         "--min_eval_iter", str(400)])
 total_time = time.time() - start_time
 print(f"Time for one sketch [{total_time:.3f}] seconds")

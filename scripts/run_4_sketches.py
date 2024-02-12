@@ -24,9 +24,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--im_name", type=str, default="")
 parser.add_argument("--layer_opt", type=str, default="4,11")
 parser.add_argument("--divs", type=str, default="0.45,0.9")
-
+parser.add_argument("--fg_bg_separation", type=int, default=1)
 args = parser.parse_args()
 num_sketches = 1
+
 
 def run_generate_fidelity_levels(object_or_background, resize_obj,num_iter,layer_opt):
     exit_code = sp.run(["python", "scripts/generate_fidelity_levels.py",
@@ -35,7 +36,8 @@ def run_generate_fidelity_levels(object_or_background, resize_obj,num_iter,layer
                             "--object_or_background", object_or_background,
                             "--num_iter", str(num_iter),
                             "--resize_obj", resize_obj,
-                            "--num_sketches", str(num_sketches)])
+                            "--num_sketches", str(num_sketches),
+                            "--fg_bg_separation", str(args.fg_bg_separation)])
     
 def run_ratio(simp_level, div, layer_opt, object_or_background, resize_obj):
     exit_code = sp.run(["python", "scripts/run_ratio.py",
@@ -45,7 +47,8 @@ def run_ratio(simp_level, div, layer_opt, object_or_background, resize_obj):
                             "--resize_obj",str(resize_obj),
                             "--min_div", str(div),
                             "--simp_level", str(simp_level),
-                            "--num_sketches", str(num_sketches)])
+                            "--num_sketches", str(num_sketches),
+                            "--fg_bg_separation", str(args.fg_bg_separation)])
 
 if __name__ == "__main__":
         mp.set_start_method("spawn")
@@ -55,30 +58,31 @@ if __name__ == "__main__":
         P3 = mp.Pool(ncpus)
         P4 = mp.Pool(ncpus)
         
-
         layers = [int(l) for l in args.layer_opt.split(",")]
         divs = [float(d) for d in args.divs.split(",")]
-
+       
         # run bg fidelity multiprocessing
         for l in layers:
                 num_iter = 1501        
-                if not os.path.exists(f"./results_sketches/{args.im_name}/runs/background_l{str(l)}_{args.im_name}_mask/points_mlp.pt"):
+                if not ((args.fg_bg_separation and os.path.exists(f"./results_sketches/{args.im_name}/runs/background_l{str(l)}_{args.im_name}_mask/points_mlp.pt")) \
+                        or ((not args.fg_bg_separation) and os.path.exists(f"./results_sketches/{args.im_name}/runs/l{str(l)}_{args.im_name}/points_mlp.pt"))):
                         P1.apply_async(run_generate_fidelity_levels, ("background", str(0), num_iter,l))
         
         P1.close()
         P1.join()  # start processes
 
-        # run fg fidelity multiprocessing                
-        for l in layers:
-                num_iter = 1000
-                if int(l) < 8: # converge fater for shallow layers
-                        num_iter = 600
-                if not os.path.exists(f"./results_sketches/{args.im_name}/runs/object_l{str(l)}_{args.im_name}/points_mlp.pt"):
-                        P2.apply_async(run_generate_fidelity_levels, ("object", str(1), num_iter,l))
+        # run fg fidelity multiprocessing   
+        if args.fg_bg_separation:             
+                for l in layers:
+                        num_iter = 1000
+                        if int(l) < 8: # converge fater for shallow layers
+                                num_iter = 600
+                        if not os.path.exists(f"./results_sketches/{args.im_name}/runs/object_l{str(l)}_{args.im_name}/points_mlp.pt"):
+                                P2.apply_async(run_generate_fidelity_levels, ("object", str(1), num_iter,l))
 
-        P2.close()
-        P2.join()  # start processes
-        
+                P2.close()
+                P2.join()  # start processes
+
         # run bg simplicity multiprocessing
         for l,div in zip(layers,divs):
                 try:
@@ -89,20 +93,22 @@ if __name__ == "__main__":
         P3.join()  # start processes
 
         # run fg simplicity multiprocessing
-        for l,div in zip(layers,divs):
-                try:
-                        P4.apply_async(run_ratio,(2, div, l, "object", 1))
-                except Exception as e:
-                        print(f"An error occurred: {e}")
-        P4.close()
-        P4.join()  # start processes
+        if args.fg_bg_separation:
+                for l,div in zip(layers,divs):
+                        try:
+                                P4.apply_async(run_ratio,(2, div, l, "object", 1))
+                        except Exception as e:
+                                print(f"An error occurred: {e}")
+                P4.close()
+                P4.join()  # start processes
 
 
         sp.run(["python", "scripts/combine_matrix.py", 
                 "--im_name", args.im_name,
                 "--layers", str(args.layer_opt),
                 "--rows", "2",
-                "--is_single", "1"])
+                "--is_single", "1",
+                "--fg_bg_separation", str(args.fg_bg_separation)])
 
         total_time = time.time() - start_time
         print(f"Total time for 2x2 matrix: [{total_time:.3f}] seconds")

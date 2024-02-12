@@ -56,18 +56,22 @@ def gen_matrix(output_dir, im_name, layers, rows_inds):
     runs_folders = os.listdir(runs_dir)
     for layer, col_ in zip(layers, rows_inds):
         layer_paths = [path for path in runs_folders if f"l{layer}" in f"_{str(path)}_" and "ratio" in path]
-        object_paths = [path for path in layer_paths if "mask" not in path]
+        object_paths = [path for path in layer_paths if "mask" not in path and "scene" not in path]
         background_paths = [path for path in layer_paths if "mask" in path]
+        scene_paths = [path for path in layer_paths if "scene" in path]
         
         # print(background_paths)
         sorted_layer_paths_o = sorted(object_paths, key=lambda x: float(x.split("_")[0].replace("ratio", "")), reverse=True)
         sorted_layer_paths_b = sorted(background_paths, key=lambda x: float(x.split("_")[0].replace("ratio", "")), reverse=True)
+        sorted_layer_paths_s = sorted(scene_paths, key=lambda x: float(x.split("_")[0].replace("ratio", "")), reverse=True)
         # print(sorted_layer_paths_o)
         sorted_layer_paths_o = [f"object_l{layer}_{im_name}"] + sorted_layer_paths_o
         sorted_layer_paths_b = [f"background_l{layer}_{im_name}_mask"] + sorted_layer_paths_b
+        sorted_layer_paths_s = [f"l{layer}_{im_name}"] + sorted_layer_paths_s
     
         copy_files(sorted_layer_paths_b, col_, "background_matrix")
         copy_files(sorted_layer_paths_o, col_, "object_matrix")
+        copy_files(sorted_layer_paths_s, col_, "scene_matrix")
         print("finished copying")
     
     params_path = f"{output_dir}/runs/object_l{layers[0]}_{im_name}/resize_params.npy"
@@ -124,36 +128,42 @@ def plot_matrix_raster(im_path, rows, cols, output_dir, output_name):
         
 
 def combine_matrix(output_dir, rows, cols, output_size = 448):  
-    obj_matrix_path = f"{output_dir}/object_matrix"
-    back_matrix_path = f"{output_dir}/background_matrix"
-    
-    params_path = f"{obj_matrix_path}/resize_params.npy"
     params = None
-    if os.path.exists(params_path):
-        params = np.load(params_path, allow_pickle=True)[()]       
-    mask_path = f"{obj_matrix_path}/mask.png"
-    mask = imageio.imread(mask_path)
-    mask = resize(mask, (output_size, output_size), anti_aliasing=False)
+    if args.fg_bg_separation:
+        obj_matrix_path = f"{output_dir}/object_matrix"
+        back_matrix_path = f"{output_dir}/background_matrix"
+        params_path = f"{obj_matrix_path}/resize_params.npy"
+        if os.path.exists(params_path):
+            params = np.load(params_path, allow_pickle=True)[()]       
+        mask_path = f"{obj_matrix_path}/mask.png"
+        mask = imageio.imread(mask_path)
+        mask = resize(mask, (output_size, output_size), anti_aliasing=False)
     
     for i, row_ in enumerate(rows):
         for j, col_ in enumerate(cols):
-            cur_svg_o = f"{output_dir}/object_matrix/row{row_}_col{col_}.svg"
-            print(cur_svg_o)
-            raster_o = scripts_utils.read_svg(cur_svg_o, resize_obj=1, params=params, multiply=1.8, device=device)
-            raster_o_uint8 = (raster_o * 255).astype(np.uint8)
-            imageio.imsave(f"{output_dir}/object_matrix/row{row_}_col{col_}.png", raster_o_uint8)
+            if args.fg_bg_separation:
+                cur_svg_o = f"{output_dir}/object_matrix/row{row_}_col{col_}.svg"
+                print(cur_svg_o)
+                raster_o = scripts_utils.read_svg(cur_svg_o, resize_obj=1, params=params, multiply=1.8, device=device)
+                raster_o_uint8 = (raster_o * 255).astype(np.uint8)
+                imageio.imsave(f"{output_dir}/object_matrix/row{row_}_col{col_}.png", raster_o_uint8)
 
-            cur_svg_b = f"{output_dir}/background_matrix/row{row_}_col{col_}.svg"
-            print(cur_svg_b)
-            raster_b = scripts_utils.read_svg(cur_svg_b, resize_obj=0, params=params, multiply=1.8, device=device)
-            raster_b_uint8 = (raster_b * 255).astype(np.uint8)
-            imageio.imsave(f"{output_dir}/background_matrix/row{row_}_col{col_}.png", raster_b_uint8)
+                cur_svg_b = f"{output_dir}/background_matrix/row{row_}_col{col_}.svg"
+                print(cur_svg_b)
+                raster_b = scripts_utils.read_svg(cur_svg_b, resize_obj=0, params=params, multiply=1.8, device=device)
+                raster_b_uint8 = (raster_b * 255).astype(np.uint8)
+                imageio.imsave(f"{output_dir}/background_matrix/row{row_}_col{col_}.png", raster_b_uint8)
 
-            raster_b[mask == 1] = 1
-            raster_b[raster_o != 1] = raster_o[raster_o != 1]
-            raster_b_uint8 = (raster_b * 255).astype(np.uint8)
-            imageio.imsave(f"{output_dir}/combined_matrix/row{row_}_col{col_}.png", raster_b_uint8)
-
+                raster_b[mask == 1] = 1
+                raster_b[raster_o != 1] = raster_o[raster_o != 1]
+                raster_b_uint8 = (raster_b * 255).astype(np.uint8)
+                imageio.imsave(f"{output_dir}/combined_matrix/row{row_}_col{col_}.png", raster_b_uint8)
+            else:
+                cur_svg_o = f"{output_dir}/scene_matrix/row{row_}_col{col_}.svg"
+                print(cur_svg_o)
+                raster_o = scripts_utils.read_svg(cur_svg_o, resize_obj=0, params=params, multiply=1.8, device=device)
+                raster_o_uint8 = (raster_o * 255).astype(np.uint8)
+                imageio.imsave(f"{output_dir}/scene_matrix/row{row_}_col{col_}.png", raster_o_uint8)
 
 
 if __name__ == "__main__":
@@ -163,6 +173,7 @@ if __name__ == "__main__":
     parser.add_argument("--layers", type=str, default="2,8,11")
     parser.add_argument("--rows", type=str, default="9")
     parser.add_argument("--is_single", type=int, default=0)
+    parser.add_argument("--fg_bg_separation", type=int, default=1)
     args = parser.parse_args()
     layers = args.layers.split(",")
     cols = range(len(layers))
@@ -177,6 +188,8 @@ if __name__ == "__main__":
         os.mkdir(f"{output_dir}/combined_matrix")
     if not os.path.exists(f"{output_dir}/all_sketches"):
         os.mkdir(f"{output_dir}/all_sketches")
+    if not os.path.exists(f"{output_dir}/scene_matrix"):
+        os.mkdir(f"{output_dir}/scene_matrix")
 
 
     device = torch.device("cuda" if (
@@ -184,21 +197,29 @@ if __name__ == "__main__":
     runs_dir = f"{output_dir}/runs"
     gen_matrix(output_dir, args.im_name, layers, cols)
     
-    svg_path = f"{output_dir}/background_matrix"
-    resize_obj=0
-    plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "background_all")
-    if not args.is_single: 
-        plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "background_4x4")
+    if args.fg_bg_separation:
+        svg_path = f"{output_dir}/background_matrix"
+        resize_obj=0
+        plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "background_all")
+        if not args.is_single: 
+            plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "background_4x4")
 
 
-    svg_path = f"{output_dir}/object_matrix"
-    resize_obj=1
-    plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "obj_all")
-    if not args.is_single:
-        plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "obj_4x4")
+        svg_path = f"{output_dir}/object_matrix"
+        resize_obj=1
+        plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "obj_all")
+        if not args.is_single:
+            plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "obj_4x4")
+    else:
+        svg_path = f"{output_dir}/scene_matrix"
+        resize_obj=1
+        plot_matrix_svg(svg_path, range(int(args.rows)), cols, resize_obj, output_dir, "scene_all")
+        if not args.is_single:
+            plot_matrix_svg(svg_path, range(int(args.rows))[1::2], cols, resize_obj, output_dir, "obj_4x4")
 
     combine_matrix(output_dir, rows, cols)
-    plot_matrix_raster(f"{output_dir}/combined_matrix", rows, cols, output_dir, "combined_all")
+    if args.fg_bg_separation:
+        plot_matrix_raster(f"{output_dir}/combined_matrix", rows, cols, output_dir, "combined_all")
     if not args.is_single:
         plot_matrix_raster(f"{output_dir}/combined_matrix", range(int(args.rows))[1::2], cols, output_dir, "combined_4x4")
         
