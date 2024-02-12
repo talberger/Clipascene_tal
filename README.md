@@ -146,5 +146,5 @@ Running the full pipeline, which produces a 3x9 matrix (3 levels of fidelity and
     python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
     ```
 
-In addition, the runtime can be further reduced when running the 4 sketches script by adding the flag --fg_bg_separation 0. The optimization will be conducted without separating the background and the object, and therefore the quality of the sketch may be affected. <br>
-The runtime will take 533 seconds in this case.
+In addition, the runtime can be further reduced when running the 4 sketches script by adding the flag '--fg_bg_separation 0'. <br>
+This optimization will be conducted without separating the background from the object, which may affect the quality of the sketch. In this case, the runtime will be 533 seconds.
