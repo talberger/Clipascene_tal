@@ -134,7 +134,7 @@ If you have multiple GPUs, you can run Background and Foreground sketches in par
 
 ## Efficient sketch generation
 
-Running the full pipeline, which produces a 3x9 matrix (3 levels of fidelity and 9 levels of simplicity), can take several hours. For faster results, you have the option of conducting a mini run using two methods:<br>
+Running the full pipeline, which produces a 3x9 matrix (3 levels of fidelity and 9 levels of simplicity), may take several hours. For faster results, you have the option of conducting a mini run using two methods:<br>
 * ```run_single_sketch.py``` - Generates a single sketch that combines both the background and the object at a specified fidelity level. <br>
     This process takes 294 seconds on a GeForce RTX 2080. <br> 
     ```bash
@@ -146,3 +146,5 @@ Running the full pipeline, which produces a 3x9 matrix (3 levels of fidelity and
     python scripts/run_4_sketches.py --im_name "ballerina" --layer_opt "4,11" --divs "0.45,0.9"
     ```
 
+In addition, the runtime can be further reduced when running the 4 sketches script by adding the flag --fg_bg_separation 0. The optimization will be conducted without separating the background and the object, and therefore the quality of the sketch may be affected. <br>
+The runtime will take 533 seconds in this case.
