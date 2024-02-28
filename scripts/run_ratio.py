@@ -26,6 +26,10 @@ parser.add_argument("--min_div", type=float, default=0)
 parser.add_argument("--resize_obj", type=int, default=0)
 parser.add_argument("--num_sketches", type=int, default=2)
 parser.add_argument("--fg_bg_separation", type=int, default=1)
+parser.add_argument("--gpu_id", type=int, default=0)
+parser.add_argument("--process_id", type=int, default=0)
+parser.add_argument("--num_strokes", type=int, default=64,
+                    help="number of strokes used to generate the sketch, this defines the level of abstraction.")
 
 args = parser.parse_args()
 
@@ -48,7 +52,7 @@ else:
 file_ = f"{path_to_files}/{folder_}/{filename}"
 
 
-num_strokes=64
+num_strokes=args.num_strokes
 gradnorm = 1
 mask_object = 0
 if args.object_or_background == "object":
@@ -137,7 +141,9 @@ for i, ratio in enumerate(ratios):
                 "--width_weights_lst", ratios_str,
                 "--ratio_loss", str(ratio),
                 "--mask_object", str(mask_object),
+                "--gpu_id",str(args.gpu_id),
+                "--process_id", str(args.process_id),
                 "--resize_obj", str(args.resize_obj)])
         print("=" * 50)
-        print("time per w: ", time.time() - start)
+        print(f"time per w {test_name}: ", time.time() - start)
         print("=" * 50)

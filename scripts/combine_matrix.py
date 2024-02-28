@@ -14,6 +14,9 @@ import numpy as np
 import imageio
 from skimage.transform import resize
 import scripts_utils
+import warnings
+warnings.filterwarnings("ignore", message="Matplotlib is currently using agg, which is a non-GUI backend, so cannot show the figure.")
+
 
 # ===================================================
 # ================= call run ratio ==================

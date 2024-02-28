@@ -25,6 +25,8 @@ from skimage import morphology
 from skimage.measure import label 
 from models.painter_params import MLP, WidthMLP
 from shutil import copyfile
+import warnings
+warnings.filterwarnings("ignore", message="Matplotlib is currently using agg, which is a non-GUI backend, so cannot show the figure.")
 
 
 
@@ -351,7 +353,7 @@ def get_mask_u2net(args, pil_im):
 
     with torch.no_grad():
         input_im_trans = input_im_trans.type(torch.FloatTensor)
-        d1, d2, d3, d4, d5, d6, d7 = net(input_im_trans.cuda())
+        d1, d2, d3, d4, d5, d6, d7 = net(input_im_trans.cuda(args.gpu_id))
 
     pred = d1[:, 0, :, :]
     pred = (pred - pred.min()) / (pred.max() - pred.min())

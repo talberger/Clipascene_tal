@@ -23,7 +23,7 @@ parser.add_argument("--num_strokes", type=int, default=64,
 args = parser.parse_args()
 
 
-def run(object_or_background, resize_obj,num_iter):
+def run(object_or_background, resize_obj, num_iter, process_id):
     exit_code = sp.run(["python", "scripts/generate_fidelity_levels.py",
                             "--im_name", args.im_name,
                             "--layer_opt", str(args.layer_opt),
@@ -32,6 +32,7 @@ def run(object_or_background, resize_obj,num_iter):
                             "--resize_obj", resize_obj,
                             "--num_sketches", str(1),
                             "--num_strokes",str(args.num_strokes),
+                            "--process_id",str(process_id),
                             "--fg_bg_separation", str(args.fg_bg_separation)])
 
 
@@ -43,14 +44,14 @@ if __name__ == "__main__":
         
         if not ((args.fg_bg_separation and os.path.exists(f"./results_sketches/{args.im_name}/runs/background_l{str(args.layer_opt)}_{args.im_name}_mask/points_mlp.pt")) \
                 or ((not args.fg_bg_separation) and os.path.exists(f"./results_sketches/{args.im_name}/runs/l{str(args.layer_opt)}_{args.im_name}/points_mlp.pt"))):
-                P.apply_async(run, ("background", str(0), num_iter))
+                P.apply_async(run, ("background", str(0), num_iter, 0))
 
         if args.fg_bg_separation:
                 num_iter = 1000
                 if args.layer_opt < 8: # converge fater for shallow layers
                         num_iter = 600
                 if not os.path.exists(f"./results_sketches/{args.im_name}/runs/object_l{str(args.layer_opt)}_{args.im_name}/points_mlp.pt"):
-                        P.apply_async(run, ("object", str(1), num_iter))
+                        P.apply_async(run, ("object", str(1), num_iter, 1))
 
         P.close()
         P.join()  # start processes

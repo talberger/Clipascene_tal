@@ -27,6 +27,8 @@ parser.add_argument("--num_sketches", type=int, default=2)
 parser.add_argument("--fg_bg_separation", type=int, default=1)
 parser.add_argument("--num_strokes", type=int, default=64,
                     help="number of strokes used to generate the sketch, this defines the level of abstraction.")
+parser.add_argument("--gpu_id", type=int, default=0)
+parser.add_argument("--process_id", type=int, default=0)
 args = parser.parse_args()
 
 
@@ -84,6 +86,8 @@ sp.run(["python",
         "--resize_obj", str(args.resize_obj),
         "--eval_interval", str(50),
         "--num_strokes", str(num_strokes),
+        "--gpu_id",str(args.gpu_id),
+        "--process_id",str(args.process_id),
         "--min_eval_iter", str(400)])
 total_time = time.time() - start_time
-print(f"Time for one sketch [{total_time:.3f}] seconds")
+print(f"Time taken to generate fidelity for {test_name}: [{total_time:.2f}] seconds")
