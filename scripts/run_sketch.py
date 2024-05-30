@@ -45,6 +45,7 @@ parser.add_argument("--mask_object_attention", type=int, default=0,
 parser.add_argument("--clip_fc_loss_weight", type=str, default="0")
 parser.add_argument("--clip_conv_layer_weights", type=str, default="0,0,1.0,1.0,0")
 parser.add_argument("--clip_conv_loss_type", type=str, default="L2")
+parser.add_argument("--clip_text_guide_type", type=str, default="Cos")
 
 parser.add_argument("--clip_model_name", type=str, default="ViT-B/32")
 parser.add_argument("--loss_mask", type=str, default="none")
@@ -52,6 +53,7 @@ parser.add_argument("--mlp_train", type=int, default=1)
 parser.add_argument("--lr", type=float, default=1e-4)
 parser.add_argument("--clip_mask_loss", type=int, default=0)
 parser.add_argument("--clip_conv_loss", type=int, default=1)
+parser.add_argument("--clip_text_guide", type=int, default=0)
 parser.add_argument("--dilated_mask", type=int, default=0)
 parser.add_argument("--mask_attention", type=int, default=0)
 
@@ -150,6 +152,7 @@ def run(seed, wandb_name, output_dir, losses_best_normalised, losses_eval_sum):
                             "--mask_cls", args.mask_cls,
                             "--width_optim", str(args.width_optim),
                             "--width_loss_weight", str(args.width_loss_weight),
+                            "--clip_text_guide", str(args.clip_text_guide),
                             "--mask_attention", str(args.mask_attention),
                             "--optimize_points", str(args.optimize_points),
                             "--width_loss_type", args.width_loss_type,

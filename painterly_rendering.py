@@ -109,6 +109,10 @@ def main(args):
         init_sketches = renderer.get_image("init").to(args.device)
         renderer.save_svg(
                 f"{args.output_dir}", f"init")
+    
+    ts_fc_features=0
+    if args.clip_text_guide:
+        ts_fc_features = loss_func.loss_mapper['clip_conv_loss'].get_caption_vector(inputs.clone().detach())
 
     for epoch in epoch_range:
         if not args.display:
@@ -116,7 +120,7 @@ def main(args):
         start = time.time()
         optimizer.zero_grad_()
         sketches = renderer.get_image().to(args.device)
-        losses_dict_weighted, losses_dict_norm, losses_dict_original = loss_func(sketches, inputs.detach(), counter, renderer.get_widths(), renderer, optimizer, mode="train", width_opt=renderer.width_optim)
+        losses_dict_weighted, losses_dict_norm, losses_dict_original = loss_func(sketches, inputs.detach(), ts_fc_features.detach(), counter, renderer.get_widths(), renderer, optimizer, mode="train", width_opt=renderer.width_optim)
         loss = sum(list(losses_dict_weighted.values()))
         loss.backward()
         optimizer.step_()
@@ -140,7 +144,7 @@ def main(args):
                     }, f"{args.output_dir}/mlps/width_mlp{counter}.pt")
 
             with torch.no_grad():
-                losses_dict_weighted_eval, losses_dict_norm_eval, losses_dict_original_eval = loss_func(sketches, inputs, counter, renderer.get_widths(), renderer=renderer, mode="eval", width_opt=renderer.width_optim)
+                losses_dict_weighted_eval, losses_dict_norm_eval, losses_dict_original_eval = loss_func(sketches, inputs,ts_fc_features.detach(),  counter, renderer.get_widths(), renderer=renderer, mode="eval", width_opt=renderer.width_optim)
                 loss_eval = sum(list(losses_dict_weighted_eval.values()))
                 configs_to_save["loss_eval"].append(loss_eval.item())
                 if "num_strokes" not in configs_to_save.keys():
