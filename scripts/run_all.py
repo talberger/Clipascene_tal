@@ -21,5 +21,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--im_name", type=str, default="")
 args = parser.parse_args()
 
+
+
 sp.run(["python", "scripts/run_background.py", "--im_name", args.im_name])
 sp.run(["python", "scripts/run_foreground.py", "--im_name", args.im_name])

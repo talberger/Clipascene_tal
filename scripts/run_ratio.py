@@ -70,13 +70,16 @@ assert os.path.exists(mlp_points_weights_path)
 
 
 # get the ratios for im_name at the given layer_opt
+time_get_ratios_start =  time.time()
 ratios_str = scripts_utils.get_ratios_dict(path_res_pref, folder_name_l=res_filename, 
                                             layer=args.layer_opt, im_name=args.im_name, 
                                             object_or_background=args.object_or_background,
                                             step_size_l=args.min_div)                         
 ratios = [float(item) for item in ratios_str.split(',')]
 print(ratios)
-
+time_get_ratios_end = time.time()
+time_get_ratios =  time_get_ratios_end - time_get_ratios_start
+print(f"time_get_ratios {time_get_ratios}")
 
 # train for each ratio
 for i, ratio in enumerate(ratios):
@@ -126,3 +129,6 @@ for i, ratio in enumerate(ratios):
         print("=" * 50)
         print("time per w: ", time.time() - start)
         print("=" * 50)
+
+time_skeckes_all_ratios = time.time() - time_get_ratios_end
+print(f"time_skeckes_all_ratios: {time_skeckes_all_ratios}")

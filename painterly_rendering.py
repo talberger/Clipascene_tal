@@ -7,6 +7,8 @@ import argparse
 import math
 import os
 import sys
+import re
+import subprocess as sp
 sys.stdout.flush()
 
 import time
@@ -28,6 +30,7 @@ from models.loss import Loss
 from models.painter_params import Painter, PainterOptimizer
 from IPython.display import display, SVG
 import matplotlib.pyplot as plt
+from scripts.create_gif import run_create_gif
 # from torch import autograd
 
 
@@ -75,10 +78,24 @@ def get_target(args):
 
 
 def main(args):
+    time_load_image_and_mask_start = time.time()
     inputs, mask = get_target(args)
+    time_load_image_and_mask_end = time.time()
+    time_load_image_and_mask = time_load_image_and_mask_end - time_load_image_and_mask_start
+    # print(f"time_load_image_and_mask: {time_load_image_and_mask}")
+
+    time_load_loss_start = time.time()
     loss_func = Loss(args, mask)
+    time_load_loss_end =  time.time()
+    time_load_loss= time_load_loss_end -  time_load_loss_start
+    # print(f"time_load_loss_functions: {time_load_loss}")
+
+ 
     utils.log_input(args.use_wandb, 0, inputs, args.output_dir)
     renderer = load_renderer(args, inputs, mask)
+    time_load_models_end = time.time()
+    time_load_models = time_load_models_end - time_load_loss_end
+    # print(f"time_load_models: {time_load_models}")
     
     optimizer = PainterOptimizer(args, renderer)
     counter = 0
@@ -88,13 +105,19 @@ def main(args):
     min_delta = 1e-7
     terminate = False
 
+    time_init_storkes_start =  time.time()
     renderer.set_random_noise(0)
     renderer.init_image(stage=0)
     renderer.save_svg(
                 f"{args.output_dir}/svg_logs", f"init_svg") # this is the inital random strokes
     optimizer.init_optimizers()
-    
+    time_init_storkes_end =  time.time()
+    time_init_storkes = time_init_storkes_end - time_init_storkes_start
+    # print(f"time_init_storkes and init optimizer {time_init_storkes}")
+
     # not using tdqm for jupyter demo
+    # print(f"number of iteration before change (epoch_range)= {args.num_iter}")
+    
     if args.display:
         epoch_range = range(args.num_iter)
     else:
@@ -105,25 +128,78 @@ def main(args):
         renderer.turn_off_points_optim()
         optimizer.turn_off_points_optim()
     
+    time_init_sketches_start = time.time()
     with torch.no_grad():
-        init_sketches = renderer.get_image("init").to(args.device)
+        img , _, _, _ = renderer.get_image("init")
+        init_sketches = img.to(args.device)
         renderer.save_svg(
                 f"{args.output_dir}", f"init")
+    time_init_sketches = time.time() -time_init_sketches_start
+    # print(f"time_init_sketches rendering and loading to device: {time_init_sketches}")
+    # print(init_sketches.shape)
 
+    #extract path svg det
+    pattern_layer = r"_l(\d+)"
+    pattern_iter  = r"_iter(\d+)"
+    init_iter = 0
+    match_layer = re.search(pattern_layer, args.path_svg)
+    match_iter = re.search(pattern_iter, args.path_svg)
+    if match_layer:
+        init_layer = match_layer.group(1)
+    if match_iter:
+        init_iter = match_iter.group(1)
+    init_title =''
+    if args.path_svg != 'none':
+        if "_best" in args.path_svg:
+            init_title = f" initial sketch l{init_layer} best iteration"
+        else:
+            init_title = f" initial sketch l{init_layer} iter{init_iter}"
+
+    
+    time_get_image_accum = 0
+    time_loss_calc_accum = 0
+    time_opt_step_accum  = 0
+    time_mlploc_loop_accum = 0
+    time_mlpsimpe_loop_accum = 0
+    time_rendring_one_sketch_accum = 0
+
+    time_rendering_sketch_all_iteration_start = time.time()
+    loss_list = []
     for epoch in epoch_range:
         if not args.display:
             epoch_range.refresh()
         start = time.time()
         optimizer.zero_grad_()
-        sketches = renderer.get_image().to(args.device)
+        # sketches ,time_mlploc_loop, time_mlpsimpe_loop, time_rendring_one_sketch = renderer.get_image().to(args.device)
+        sketches ,time_mlploc_loop, time_mlpsimpe_loop, time_rendring_one_sketch = renderer.get_image()
+        sketches.to(args.device)
+        time_mlploc_loop_accum += time_mlploc_loop
+        time_mlpsimpe_loop_accum += time_mlpsimpe_loop
+        time_rendring_one_sketch_accum += time_rendring_one_sketch
+
+        time_get_image_end = time.time()
+        time_get_image = time_get_image_end - start
+        time_get_image_accum += time_get_image
+        # print(f"time_get_image: {time_get_image}")
+
         losses_dict_weighted, losses_dict_norm, losses_dict_original = loss_func(sketches, inputs.detach(), counter, renderer.get_widths(), renderer, optimizer, mode="train", width_opt=renderer.width_optim)
         loss = sum(list(losses_dict_weighted.values()))
         loss.backward()
+        time_loss_calc_end = time.time()
+        time_loss_calc = time_loss_calc_end - time_get_image_end
+        time_loss_calc_accum += time_loss_calc
+        # print(f"time_loss_calc: {time_loss_calc}")
+
         optimizer.step_()
 
+        time_opt_step= time.time() -time_loss_calc_end
+        time_opt_step_accum += time_opt_step
+        # print(f"time_opt_step: {time_opt_step_accum}")
+
         if epoch % args.save_interval == 0:
-            utils.plot_batch(inputs, sketches, f"{args.output_dir}/jpg_logs", counter,
-                             use_wandb=args.use_wandb, title=f"iter{epoch}.jpg")
+            loss_list.append(loss.item())
+            utils.plot_batch(init_sketches, inputs, sketches, len(epoch_range), init_title, f"{args.output_dir}/jpg_logs", counter, loss_list, args.save_interval 
+                             ,use_wandb=args.use_wandb, title=f"iter{epoch}.jpg")
             renderer.save_svg(
                 f"{args.output_dir}/svg_logs", f"svg_iter{epoch}")
 
@@ -216,6 +292,36 @@ def main(args):
     if args.width_optim:
         utils.log_best_normalised_sketch(configs_to_save, args.output_dir, args.use_wandb, args.device, args.eval_interval, args.min_eval_iter)
     utils.inference_sketch(args)
+
+    time_rendering_sketch_all_iteration_end =  time.time()
+    time_rendering_sketch_all_iteration =  time_rendering_sketch_all_iteration_end - time_rendering_sketch_all_iteration_start
+
+    if args.create_gif_bool:
+        # title_prefix = output_dir.split('/')[-2].replace('_', ' ')
+        # sp.run(['python', '/home/SceneSketch/scripts/create_gif.py',"aaa", "bbb"])
+        #sp.run(['python', '/home/SceneSketch/scripts/create_gif.py',f"{args.output_dir}/jpg_logs/*.jpg", "/home/SceneSketch/results_sketches/anim/"+"anim_" +args.output_dir.split('/')[-1]+".gif"  ])
+        # scripts.create_gif.main(f"{args.output_dir}/jpg_logs/*.jpg","/home/SceneSketch/results_sketches/anim/"+"anim_" +args.output_dir.split('/')[-1]+".gif" )
+        run_create_gif(f"{args.output_dir}/jpg_logs/*.jpg", "/home/SceneSketch/results_sketches/anim/"+"anim_" +args.output_dir.split('/')[-1]+init_title +".gif")
+        # run create_gif(f"{args.output_dir}/jpg_logs/*.gpj", "/home/SceneSketch/results_sketches/anim/"+args.output_dir.split('/')[-1]+".jpg")
+    
+
+    print(f"############# times #################")
+    print(f"time_load_image_and_mask: {time_load_image_and_mask}")
+    print(f"time_load_loss_functions: {time_load_loss}")
+    print(f"time_load_models: {time_load_models}")
+    print(f"time_init_storkes and init optimizer {time_init_storkes}")
+    print(f"time_init_sketches rendering and loading to device: {time_init_sketches}")
+    print(f'time_rendering_sketch_all_iteration {time_rendering_sketch_all_iteration}')
+
+
+    # times per iteration
+    # print(f"time_get_image: {time_get_image_accum*1000/len(epoch_range)}")
+    # print(f"    time_mlploc_loop_accum: {time_mlploc_loop_accum*1000/len(epoch_range)}")
+    # print(f"    time_mlpsimpe_loop_accum: {time_mlpsimpe_loop_accum*1000/len(epoch_range)}")
+    # print(f"    time_rendring_one_sketch: {time_rendring_one_sketch_accum*1000/len(epoch_range)}")
+    # print(f"time_loss_calc_accum: {time_loss_calc_accum*1000/len(epoch_range)}")
+    # print(f"time_opt_step_accum: {time_opt_step_accum*1000/len(epoch_range)}")
+
     return configs_to_save
 
 if __name__ == "__main__":

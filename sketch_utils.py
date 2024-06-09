@@ -1,6 +1,8 @@
 import os
 
 import imageio
+import matplotlib
+matplotlib.use('Agg') # tal code - no display to make it faster
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -52,21 +54,48 @@ def imwrite(img, filename, gamma=2.2, normalize=False, use_wandb=False, wandb_na
         wandb.log({wandb_name + "_": images}, step=step)
 
 
-def plot_batch(inputs, outputs, output_dir, step, use_wandb, title):
-    plt.figure(figsize=(3,6))
-    plt.subplot(2, 1, 1)
+def plot_batch(init_sketches, inputs, outputs, len_epoch_range, init_title, output_dir, step, loss_list, save_interval, use_wandb, title):
+    plt.ioff() # tal code - no interactive in order the make it faster
+
+    title_prefix = output_dir.split('/')[-2].replace('_', ' ')
+    plt.figure(figsize=(8,6))
+    plt.suptitle(title_prefix +' ' + title[:-4], fontsize=14, fontweight='bold')
+
+
+    plt.subplot(2, 3, 1)
+    grid = make_grid(init_sketches.clone().detach(), normalize=True, pad_value=2)
+    npgrid = grid.cpu().numpy()
+    plt.imshow(np.transpose(npgrid, (1, 2, 0)), interpolation='nearest')
+    plt.axis("off")
+    if init_title=='':
+        init_title='initial sketch'
+    plt.title(init_title)
+
+    plt.subplot(2, 3, 2)
     grid = make_grid(inputs.clone().detach(), normalize=True, pad_value=2)
     npgrid = grid.cpu().numpy()
     plt.imshow(np.transpose(npgrid, (1, 2, 0)), interpolation='nearest')
     plt.axis("off")
     plt.title("inputs")
 
-    plt.subplot(2, 1, 2)
+    plt.subplot(2, 3, 3)
     grid = make_grid(outputs, normalize=False, pad_value=2)
     npgrid = grid.detach().cpu().numpy()
     plt.imshow(np.transpose(npgrid, (1, 2, 0)), interpolation='nearest')
     plt.axis("off")
     plt.title("outputs")
+
+    x = np.arange(0,step+1,save_interval)
+    plt.subplot(2, 3, (4,6))
+    plt.plot(x,loss_list)
+    plt.title("loss")
+    plt.xlim(0,len_epoch_range)
+    if len_epoch_range > 1501:
+        xtick_step = 200
+    else:
+        xtick_step = 100
+    plt.xticks(np.arange(0, len_epoch_range, xtick_step))
+    # plt.set_xticks(np.arange(0, 1501, 10))
 
     plt.tight_layout()
     if use_wandb:

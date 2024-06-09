@@ -4,6 +4,7 @@ import subprocess as sp
 from shutil import copyfile
 import time
 
+
 # ===========================================
 # ======= fidelity axis generation ==========
 # ===========================================
@@ -23,7 +24,27 @@ parser.add_argument("--layer_opt", type=int, default=4)
 parser.add_argument("--object_or_background", type=str, default="background")
 parser.add_argument("--resize_obj", type=int, default=0)
 parser.add_argument("--num_iter", type=int, default=1501)
+# parser.add_argument("--num_iter", type=int, default=1501)
 args = parser.parse_args()
+
+#agruments for debug run
+args.im_name = "ballerina"
+args.layer_opt = 2
+# args.object_or_background = "object"
+# args.resize_obj = 1
+args.num_iter = 1000
+save_interval = 100
+create_gif_bool = 0
+path_svg="none"
+if False: # Edit path svg
+    init_layer = 8
+    init_iter = 30
+    init_by_best_iter = False
+
+    if init_by_best_iter:
+        path_svg =f"/home/SceneSketch/results_sketches/ballerina/runs/background_l{init_layer}_ballerina_mask/background_l{init_layer}_ballerina_mask_seed0_best.svg"
+    else:
+        path_svg =f"/home/SceneSketch/results_sketches/ballerina/runs/background_l{init_layer}_ballerina_mask/background_l{init_layer}_ballerina_mask_seed0/svg_logs/svg_iter{init_iter}.svg"
 
 
 path_to_input_images = "./target_images" # where the input images are located
@@ -46,7 +67,7 @@ if args.object_or_background == "object":
 # ====== demo =======
 # ===================
 num_strokes = 64
-num_sketches = 2
+num_sketches = 2 #changed for debug from 2 --> 1
 num_iter = args.num_iter
 # ===================
 
@@ -62,7 +83,6 @@ clip_conv_layer_weights = ','.join(clip_conv_layer_weights_str)
 file_ = f"{path_to_input_images}/{folder_}/{im_filename}"
 test_name = f"{args.object_or_background}_l{args.layer_opt}_{os.path.splitext(im_filename)[0]}"
 print(test_name)
-
 start_time = time.time()
 sp.run(["python", 
         "scripts/run_sketch.py", 
@@ -76,6 +96,9 @@ sp.run(["python",
         "--gradnorm", str(gradnorm),
         "--resize_obj", str(args.resize_obj),
         "--eval_interval", str(50),
-        "--min_eval_iter", str(400)])
+        "--min_eval_iter", str(400),
+        "--save_interval", str(save_interval),
+        "--path_svg", path_svg,
+        "--create_gif_bool", str(create_gif_bool)])
 total_time = time.time() - start_time
-print(f"Time for one sketch [{total_time:.3f}] seconds")
+print(f"Time for one sketch fidelity [{total_time:.3f}] seconds")

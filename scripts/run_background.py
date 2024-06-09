@@ -19,10 +19,12 @@ import os
 # foreground : layers = [2, 3, 4, 7, 8, 11] divs = [0.45, 0.45, 0.45, 0.4,  0.5, 0.9]
 
 parser = argparse.ArgumentParser()
+
 parser.add_argument("--im_name", type=str, default="")
 parser.add_argument("--layers", type=str, default="2,8,11")
 parser.add_argument("--divs", type=str, default="0.35,0.5,0.85")
 args = parser.parse_args()
+
 
 layers = [int(l) for l in args.layers.split(",")]
 divs = [float(d) for d in args.divs.split(",")]
@@ -36,7 +38,6 @@ for l in layers:
                 "--layer_opt", str(l),
                 "--object_or_background", "background"])
 end_time_fidelity_b = time.time() - start_time_fidelity_b
-
 # run the columns (simplicity axis)
 # this is for background
 start_time_simp_b = time.time()

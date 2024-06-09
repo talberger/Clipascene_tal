@@ -138,6 +138,10 @@ class Painter(torch.nn.Module):
                 num_paths_exists = len(self.shapes)
                 # if self.width_optim:
                 for path in self.shapes:
+                    # tal noise adding
+                    # normal_noise = torch.tensor(np.random.normal(0, 20, path.points.size()), dtype=torch.float64)
+                    # path.points += normal_noise
+                    path.points = torch.tensor(path.points).to(self.device)
                     self.points_init.append(path.points)
                 #         path.stroke_width.data.to(self.device)
                 #         print("stroke_width_init", path.stroke_width.is_cuda)
@@ -168,7 +172,7 @@ class Painter(torch.nn.Module):
 
     def get_image(self, mode="train"):
         if self.mlp_train:
-            img = self.mlp_pass(mode)
+            img ,time_mlploc_loop, time_mlpsimpe_loop, time_rendring_one_sketch= self.mlp_pass(mode)
         else:
             img = self.render_warp(mode)
         opacity = img[:, :, 3:4]
@@ -177,12 +181,14 @@ class Painter(torch.nn.Module):
         # Convert img from HWC to NCHW
         img = img.unsqueeze(0)
         img = img.permute(0, 3, 1, 2).to(self.device) # NHWC -> NCHW
-        return img
+        return img, time_mlploc_loop, time_mlpsimpe_loop, time_rendring_one_sketch
     
     def mlp_pass(self, mode, eps=1e-4):
         """
         update self.shapes etc through mlp pass instead of directly (should be updated with the optimizer as well).
         """
+
+        time_mlploc_loop_start =  time.time()
         if self.optimize_points_global:
             points_vars = self.points_init
             # reshape and normalise to [-1,1] range
@@ -197,14 +203,20 @@ class Painter(torch.nn.Module):
             
         else:
             points = torch.stack(self.points_init).unsqueeze(0).to(self.device)
+        time_mlploc_loop = time.time() - time_mlploc_loop_start
+        # print(f"time_mlploc_loop: {time_mlploc_loop}")
 
+        time_mlpsimpe_loop_start = time.time()
         if self.width_optim and mode != "init": #first iter use just the location mlp
             widths_  = self.mlp_width(self.init_widths).clamp(min=1e-8)
             mask_flipped = (1 - widths_).clamp(min=1e-8)
             v = torch.stack((torch.log(widths_), torch.log(mask_flipped)), dim=-1)
             hard_mask = torch.nn.functional.gumbel_softmax(v, self.gumbel_temp, False)
             self.stroke_probs = hard_mask[:, 0] * self.out_of_canvas_mask
-            self.widths = self.stroke_probs * self.init_widths            
+            self.widths = self.stroke_probs * self.init_widths        
+        time_mlpsimpe_loop_end =  time.time()
+        time_mlpsimpe_loop=   time_mlpsimpe_loop_end - time_mlpsimpe_loop_start  
+        # print(f"time_mlpsimpe_loop: {time_mlpsimpe_loop}")
         
         # normalize back to canvas size [0, 224] and reshape
         all_points = 0.5 * (points + 1.0) * self.canvas_width
@@ -218,6 +230,7 @@ class Painter(torch.nn.Module):
         # define new primitives to render
         shapes = []
         shape_groups = []
+        time_rendring_one_sketch_start = time.time()
         for p in range(self.num_paths):
             width = torch.tensor(self.width)
             if self.width_optim_global and mode != "init":
@@ -249,7 +262,10 @@ class Painter(torch.nn.Module):
                     *scene_args)
         self.shapes = shapes.copy()
         self.shape_groups = shape_groups.copy()
-        return img
+        time_rendring_one_sketch_end = time.time()
+        time_rendring_one_sketch = time_rendring_one_sketch_end - time_rendring_one_sketch_start
+        # print(f"time_rendring_one_sketch: {time_rendring_one_sketch}")
+        return img, time_mlploc_loop, time_mlpsimpe_loop, time_rendring_one_sketch
         
 
     def get_path(self):
