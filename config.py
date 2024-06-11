@@ -133,7 +133,12 @@ def parse_arguments():
                         type=str, default="0,0,1.0,1.0,0")
     parser.add_argument("--clip_model_name", type=str, default="RN101")
     parser.add_argument("--clip_fc_loss_weight", type=float, default=0.1)
-    parser.add_argument("--clip_text_guide", type=float, default=0)
+    parser.add_argument("--clip_text_guide", type=int, default=0)
+    parser.add_argument("--clip_text_fc", type=int, default=0)
+    parser.add_argument("--clip_text_layer", type=int, default=0)
+    parser.add_argument("--clip_text_guide_loss_type", type=str, default="Cos")
+    parser.add_argument("--clip_text_fc_loss_type", type=str, default="L2")
+    parser.add_argument("--clip_text_layer_loss_type", type=str, default="L2")
     parser.add_argument("--text_target", type=str, default="none")
     
 

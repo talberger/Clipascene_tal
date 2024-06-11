@@ -22,7 +22,8 @@ parser.add_argument("--im_name", type=str, default="bull")
 parser.add_argument("--layer_opt", type=int, default=4)
 parser.add_argument("--object_or_background", type=str, default="object")
 parser.add_argument("--resize_obj", type=int, default=0)
-parser.add_argument("--num_iter", type=int, default=1501)
+# parser.add_argument("--num_iter", type=int, default=1501)
+parser.add_argument("--num_iter", type=int, default=601)
 parser.add_argument("--num_sketches", type=int, default=1)
 parser.add_argument("--fg_bg_separation", type=int, default=1)
 parser.add_argument("--num_strokes", type=int, default=64,
@@ -30,6 +31,8 @@ parser.add_argument("--num_strokes", type=int, default=64,
 parser.add_argument("--gpu_id", type=int, default=0)
 parser.add_argument("--process_id", type=int, default=0)
 parser.add_argument("--clip_text_guide", type=int, default=1)
+parser.add_argument("--clip_text_fc", type=int, default=0)
+parser.add_argument("--clip_text_layer", type=int, default=0)
 
 args = parser.parse_args()
 
@@ -88,6 +91,8 @@ sp.run(["python",
         "--resize_obj", str(args.resize_obj),
         "--eval_interval", str(50),
         "--clip_text_guide", str(args.clip_text_guide),
+        "--clip_text_fc", str(args.clip_text_fc),
+        "--clip_text_layer", str(args.clip_text_layer),
         "--num_strokes", str(num_strokes),
         "--gpu_id",str(args.gpu_id),
         "--process_id",str(args.process_id),

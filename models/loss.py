@@ -59,6 +59,8 @@ class Loss(nn.Module):
         self.clip_mask_loss = args.clip_mask_loss
         self.clip_fc_loss_weight = args.clip_fc_loss_weight
         self.clip_text_guide = args.clip_text_guide
+        self.clip_text_fc = args.clip_text_fc
+        self.clip_text_layer = args.clip_text_layer
         self.width_optim = args.width_optim
         self.width_loss_weight = args.width_loss_weight
         self.ratio_loss = args.ratio_loss
@@ -71,7 +73,7 @@ class Loss(nn.Module):
 
         self.loss_mapper = {}
         if self.clip_conv_loss:
-            self.loss_mapper["clip_conv_loss"] = CLIPConvLoss(args, mask, self.clip_text_guide)
+            self.loss_mapper["clip_conv_loss"] = CLIPConvLoss(args, mask)
         if self.clip_mask_loss:
             self.loss_mapper["clip_mask_loss"] = CLIPmaskLoss(args, mask)
         if self.width_optim:
@@ -113,7 +115,7 @@ class Loss(nn.Module):
         
     
 
-    def forward(self, sketches, targets, ts_fc_features,  epoch, widths=None, renderer=None, optimizer=None, mode="train", width_opt=None):
+    def forward(self, sketches, targets, ts_fc_features_origin, ts_conv_features_origin ,  epoch, widths=None, renderer=None, optimizer=None, mode="train", width_opt=None):
         loss = 0
         self.update_losses_to_apply(epoch, width_opt, mode)
 
@@ -126,18 +128,26 @@ class Loss(nn.Module):
         for loss_name in self.losses_to_apply:
             if loss_name in ["clip_conv_loss", "clip_mask_loss"]:
                 conv_loss = self.loss_mapper[loss_name](
-                    sketches, targets, ts_fc_features, mode)
+                    sketches, targets, ts_fc_features_origin,ts_conv_features_origin, mode)
                 for layer in conv_loss.keys():
                     if "normalization" in layer:
                         loss_coeffs[layer] = 0 # include layer 11 in gradnorm but not in final loss
                         losses_dict[layer] = conv_loss[layer]
                     elif "clip_text_guide" in layer:
                         losses_dict[layer] = conv_loss[layer]
-                        loss_coeffs[layer] = 0.5 # 0.02 # temporal wight change me
+                        loss_coeffs[layer] = 10 # temporal wight change me
+                    elif "clip_text_fc" in layer:
+                        losses_dict[layer] = conv_loss[layer]
+                        loss_coeffs[layer] = 10 # temporal wight change me
+                    elif "clip_text_layer" in layer:
+                        layer_w_index = int(re.findall(r'\d+', layer)[0]) # get the layer's number
+                        losses_dict[layer] = conv_loss[layer]
+                        loss_coeffs[layer] = 1 # self.clip_conv_layer_weights[layer_w_index] # temporal wight change me
+                        clip_loss_names.append(layer)
                     else:
                         layer_w_index = int(re.findall(r'\d+', layer)[0]) # get the layer's number
                         losses_dict[layer] = conv_loss[layer]
-                        loss_coeffs[layer] = self.clip_conv_layer_weights[layer_w_index]
+                        loss_coeffs[layer] = 0 #self.clip_conv_layer_weights[layer_w_index] # temporal wight change me
                         clip_loss_names.append(layer)
             elif loss_name == "width_loss":
                 losses_dict[loss_name] = self.loss_mapper[loss_name](widths, renderer.get_strokes_in_canvas_count())
@@ -565,11 +575,13 @@ def cos_layers(xs_conv_features, ys_conv_features, clip_model_name):
 
 
 class CLIPConvLoss(torch.nn.Module):
-    def __init__(self, args, mask, clip_text_guide):
+    def __init__(self, args, mask):
         # mask is a binary tensor with shape (1,3,224,224)
         super(CLIPConvLoss, self).__init__()
         self.device = args.device
-        self.clip_text_guide = clip_text_guide
+        self.clip_text_guide = args.clip_text_guide
+        self.clip_text_fc = args.clip_text_fc
+        self.clip_text_layer = args.clip_text_layer
         self.mask = mask
         self.loss_mask = args.loss_mask
         assert self.loss_mask in ["none", "back", "for"]
@@ -589,6 +601,8 @@ class CLIPConvLoss(torch.nn.Module):
             "ViT-B/16",
         ]
 
+        self.clip_text_fc_loss_type = args.clip_text_fc_loss_type
+        self.clip_text_layer_loss_type = args.clip_text_layer_loss_type
         self.clip_conv_loss_type = args.clip_conv_loss_type
         self.clip_fc_loss_type = "Cos"  # args.clip_fc_loss_type
         assert self.clip_conv_loss_type in [
@@ -659,11 +673,15 @@ class CLIPConvLoss(torch.nn.Module):
         self.clip_fc_loss_weight = args.clip_fc_loss_weight
         self.counter = 0
 
-        if self.clip_text_guide:
+        if self.clip_text_guide or self.clip_text_fc or self.clip_text_layer:
             self.processor = Blip2Processor.from_pretrained('/home/SceneSketch/blip2_processor')
             # self.processor = Blip2Processor.from_pretrained("Salesforce/blip2-opt-2.7b")
+
+
             self.blip2_model = Blip2ForConditionalGeneration.from_pretrained(
             "Salesforce/blip2-opt-2.7b", device_map={"": 0}, torch_dtype=torch.float16)    
+            # self.blip2_model = Blip2ForConditionalGeneration.from_pretrained(
+            # "Salesforce/blip2-opt-2.7b", load_in_8bit=True, device_map={"": 0}, torch_dtype=torch.float16) 
     
     def get_caption_vector(self, target):
             
@@ -671,6 +689,7 @@ class CLIPConvLoss(torch.nn.Module):
             copied_tensor = copied_tensor.squeeze(0)
             to_pil = ToPILImage()
             pil_image = to_pil(copied_tensor)
+            # pil_images = [to_pil(img_tensor) for img_tensor in copied_tensor]
             # pil_image.show()
             # pil_image.save("/home/SceneSketch/Tal_folder/output_image_pil.png")
 
@@ -682,9 +701,9 @@ class CLIPConvLoss(torch.nn.Module):
             text = clip.tokenize(raw_text)
             ts = text.to(self.device)
             ts_fc_features, ts_conv_features = self.textual_encoder(ts)
-            return ts_fc_features
+            return ts_fc_features, ts_conv_features
 
-    def forward(self, sketch, target, ts_fc_features,  mode="train"):  # 1 3 224 224
+    def forward(self, sketch, target, ts_fc_features_origin, ts_conv_features_origin,  mode="train"):  # 1 3 224 224
         """
         Parameters
         ----------
@@ -713,6 +732,9 @@ class CLIPConvLoss(torch.nn.Module):
         # print(xs.requires_grad, ys.requires_grad)
         # sketch_utils.plot_batch(xs, ys, f"{self.args.output_dir}/jpg_logs", self.counter, use_wandb=False, title="fc_aug{}_iter{}_{}.jpg".format(1, self.counter, mode))
 
+        if self.clip_text_fc or self.clip_text_layer:
+            ts_fc_features_sketch, ts_conv_features_sketch = self.get_caption_vector(x)
+
         if self.clip_model_name.startswith("RN"):
             xs_fc_features, xs_conv_features = self.forward_inspection_clip_resnet(
                 xs.contiguous())
@@ -725,10 +747,16 @@ class CLIPConvLoss(torch.nn.Module):
 
         conv_loss = self.distance_metrics[self.clip_conv_loss_type](
             xs_conv_features, ys_conv_features, self.clip_model_name)
+        
+        if self.clip_text_layer:
+            text_loss_conv = self.distance_metrics[self.clip_text_layer_loss_type](
+            ts_conv_features_sketch, ts_conv_features_origin, self.clip_model_name)
 
         for layer, w in enumerate(self.args.clip_conv_layer_weights):
             if w:
                 conv_loss_dict[f"clip_{self.loss_log_name}_l{layer}"] = conv_loss[layer]
+                if self.clip_text_layer:
+                    conv_loss_dict[f"clip_text_layer_{self.loss_log_name}_l{layer}"] = text_loss_conv[layer]
             if layer == 11 and self.l11_norm:
                 conv_loss_dict[f"clip_{self.loss_log_name}_l{layer}_normalization"] = conv_loss[layer]
 
@@ -740,10 +768,15 @@ class CLIPConvLoss(torch.nn.Module):
             conv_loss_dict[f"fc_{self.loss_log_name}"] = fc_loss * self.clip_fc_loss_weight
 
         if self.clip_text_guide:
-            ts_fc_features_repeated = ts_fc_features.repeat(5,1)
+            ts_fc_features_origin_repeated = ts_fc_features_origin.repeat(5,1)
             fc_loss = (1 - torch.cosine_similarity(xs_fc_features,
-                           ts_fc_features_repeated, dim=1)).mean()
-            conv_loss_dict[f"fc_clip_text_guide_{self.loss_log_name}"] = fc_loss * 1.0 #self.clip_fc_loss_weight    
+                           ts_fc_features_origin_repeated, dim=1)).mean()
+            conv_loss_dict[f"fc_clip_text_guide_{self.loss_log_name}"] = fc_loss * 1.0 #self.clip_fc_loss_weight
+
+        if self.clip_text_fc:
+            text_loss_fc = self.distance_metrics[self.clip_text_loss_type](
+            ts_fc_features_sketch, ts_fc_features_origin, self.clip_model_name)  
+            conv_loss_dict[f"fc_clip_text_fc_{self.loss_log_name}"] = text_loss_fc[0] #self.clip_fc_loss_weight      
 
         self.counter += 1
         return conv_loss_dict
@@ -762,7 +795,6 @@ class CLIPConvLoss(torch.nn.Module):
         x4 = self.layer4(x3)
         y = self.att_pool2d(x4)
         return y, [x, x1, x2, x3, x4]
-
 
 class CLIPmaskLoss(torch.nn.Module):
     def __init__(self, args, mask):

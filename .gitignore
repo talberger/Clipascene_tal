@@ -3,3 +3,9 @@ output_sketches/
 U2Net_/saved_models/u2net.pth
 results_sketches/ballerina/runs/*
 notebooks/*
+Tal_IDE.py
+Tal_folder/*
+lama/*
+target_images/*
+results_sketches/*
+.gitignore
